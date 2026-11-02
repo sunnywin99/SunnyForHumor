@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>幽默訓練器</title>
-  <meta name="description" content="拆解段子、語音對練、創作自己的雙關梗">
+  <title>Sunny 表達訓練</title>
+  <meta name="description" content="幽默、說話、主持：用語音練習表達">
   <meta name="theme-color" content="#f59e0b">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -13,24 +13,25 @@
 </head>
 <body>
   <header class="topbar">
-    <a href="#/" class="brand">😄 SunnyForHumor</a>
+    <a href="#/" class="brand" id="brand">🌞 Sunny 表達訓練</a>
     <a href="#/settings" class="gear" aria-label="設定">⚙️</a>
   </header>
 
   <main id="view" class="container"></main>
 
-  <nav class="tabbar">
-    <a href="#/" data-tab="home"><span>📚</span>學習</a>
-    <a href="#/scenes" data-tab="scenes"><span>🗺️</span>場景</a>
-    <a href="#/quiz" data-tab="quiz"><span>🎯</span>猜梗</a>
-    <a href="#/perform" data-tab="perform"><span>🎤</span>表演</a>
-    <a href="#/create" data-tab="create"><span>✍️</span>創作</a>
-    <a href="#/collect" data-tab="collect"><span>📒</span>收集</a>
-  </nav>
+  <nav class="tabbar" id="tabbar"></nav>
 
-  <script src="js/data.js"></script>
-  <script src="js/theory.js"></script>
   <script src="js/speech.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/core.js"></script>
+  <!-- 😄 幽默單元 -->
+  <script src="js/humor/data.js"></script>
+  <script src="js/humor/theory.js"></script>
+  <script src="js/humor/app.js"></script>
+  <!-- 🗣️ 說話單元 -->
+  <script src="js/speak/data.js"></script>
+  <script src="js/speak/app.js"></script>
+  <!-- 🎙️ 主持單元（規劃中） -->
+  <script src="js/host/app.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>

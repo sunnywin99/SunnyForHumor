@@ -1,19 +1,8 @@
-// 幽默訓練器主程式：純前端、無框架、hash 路由
+// 😄 幽默單元：拆解段子、猜梗、搭檔對練、創作、收集、場景
 (function () {
-  const $ = (sel, root = document) => root.querySelector(sel);
-  const view = $('#view');
+  const { $, view, store, settings, esc, shuffle, A, B, speakBtn, noSupport, micToField } = App;
   const JOKES = window.JOKES;
 
-  // ---------- 儲存 ----------
-  const store = {
-    get(key, def) {
-      try { const v = localStorage.getItem('sfh-' + key); return v ? JSON.parse(v) : def; } catch (_) { return def; }
-    },
-    set(key, val) {
-      try { localStorage.setItem('sfh-' + key, JSON.stringify(val)); } catch (_) {}
-    }
-  };
-  const settings = Object.assign({ rate: 1, pause: 1000, voiceA: '', voiceB: '' }, store.get('settings', {}));
   const progress = store.get('progress', {}); // { [id]: { learned, quiz, perform } }
   const saveProgress = () => store.set('progress', progress);
   const mark = (id, key, val) => {
@@ -22,16 +11,13 @@
     else progress[id][key] = val;
     saveProgress();
   };
-
-  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const shuffle = (arr) => arr.map((v) => [Math.random(), v]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
   const byId = (id) => JOKES.find((j) => j.id === id);
 
   // ---------- 場景 ----------
   const allScenes = () => SCENES.concat(store.get('customScenes', []));
   const sceneById = (id) => allScenes().find((s) => s.id === id);
   const sceneLinks = (ids = []) =>
-    ids.map(sceneById).filter(Boolean).map((sc) => `<a class="chip scene" href="#/scenes/${sc.id}">${esc(sc.emoji)} ${esc(sc.name)}</a>`).join('');
+    ids.map(sceneById).filter(Boolean).map((sc) => `<a class="chip scene" href="#/humor/scenes/${sc.id}">${esc(sc.emoji)} ${esc(sc.name)}</a>`).join('');
 
   // 多選場景標籤，回傳 { el, value() }
   function scenePicker(selected = []) {
@@ -49,10 +35,6 @@
     return { el, value: () => [...set] };
   }
 
-  // ---------- 語音播放輔助 ----------
-  const A = () => ({ voice: settings.voiceA, rate: settings.rate, pitch: 1 });
-  const B = () => ({ voice: settings.voiceB || settings.voiceA, rate: settings.rate * 1.05, pitch: settings.voiceB ? 1 : 1.35 });
-
   // 單人表演：鋪陳 → 停頓 → 反轉（稍慢）→ 加碼
   function performanceScript(j) {
     const items = [{ text: j.setup, ...A() }, { pause: settings.pause }, { text: j.punchline, ...A(), rate: settings.rate * 0.9 }];
@@ -68,50 +50,12 @@
     });
     return items;
   }
-
-  function speakBtn(label, onClick, cls = '') {
-    const b = document.createElement('button');
-    b.className = 'btn ' + cls;
-    b.textContent = label;
-    b.onclick = onClick;
-    return b;
-  }
-
-  function noSupport(kind) {
-    return `<div class="notice">⚠️ 這個瀏覽器不支援${kind}。建議使用電腦或 Android 的 Chrome / Edge，或 iPhone 的 Safari。</div>`;
-  }
-
-  // ---------- 路由 ----------
-  const routes = {
-    '': home,
-    learn: learn,
-    quiz: quiz,
-    perform: perform,
-    create: create,
-    collect: collect,
-    scenes: scenes,
-    theory: theory,
-    settings: settingsPage
-  };
-
-  function router() {
-    Speech.stop();
-    Speech.stopListening();
-    const [name, arg] = location.hash.replace(/^#\/?/, '').split('/');
-    (routes[name] || home)(arg);
-    document.querySelectorAll('.tabbar a').forEach((a) => {
-      a.classList.toggle('active', a.dataset.tab === (name || 'home') || (name === 'learn' && a.dataset.tab === 'home'));
-    });
-    window.scrollTo(0, 0);
-  }
-  window.addEventListener('hashchange', router);
-
   // ---------- 首頁 ----------
   function home() {
     const learned = JOKES.filter((j) => progress[j.id] && progress[j.id].learned).length;
     view.innerHTML = `
       <section class="hero">
-        <h1>幽默訓練器</h1>
+        <h1>幽默訓練</h1>
         <p>拆解段子、跟搭檔對練、寫出你自己的梗。</p>
         <div class="meter"><div style="width:${(learned / JOKES.length) * 100}%"></div></div>
         <small>已學會 ${learned} / ${JOKES.length} 個段子</small>
@@ -125,10 +69,10 @@
           <li><b>反轉</b>：一句話揭露意思 B</li>
           <li><b>加碼</b>：順著意思 B 再補一刀</li>
         </ol>
-        <a class="link" href="#/theory">為什麼這樣會好笑？看幽默原理 →</a>
+        <a class="link" href="#/humor/theory">為什麼這樣會好笑？看幽默原理 →</a>
       </section>
 
-      <a class="card scene-entry" href="#/scenes">
+      <a class="card scene-entry" href="#/humor/scenes">
         <b>🗺️ 依場景整理</b>
         <span class="small">${SCENES.slice(0, 4).map((s) => s.emoji + s.name).join('・')}… 遇到什麼情境，就講什麼梗</span>
       </a>
@@ -137,7 +81,7 @@
       <div class="list">
         ${JOKES.map((j, i) => {
           const p = progress[j.id] || {};
-          return `<a class="joke-item" href="#/learn/${j.id}">
+          return `<a class="joke-item" href="#/humor/learn/${j.id}">
             <span class="num">${i + 1}</span>
             <span class="body"><b>${esc(j.title)}</b><small>${esc(j.technique)}・${j.scenes.map((id) => sceneById(id).emoji).join('')} ${j.scenes.map((id) => sceneById(id).name).join('、')}</small></span>
             <span class="badges">${p.learned ? '📖' : ''}${p.quiz ? '🎯' : ''}${p.perform >= 80 ? '🎤' : ''}</span>
@@ -153,7 +97,7 @@
     const idx = JOKES.indexOf(j);
     const pat = PATTERNS[j.pattern];
     view.innerHTML = `
-      <a class="back" href="#/">← 返回</a>
+      <a class="back" href="#/humor">← 返回</a>
       <h1>${esc(j.title)}</h1>
       <div class="chips"><span class="chip">${esc(j.technique)}</span><span class="chip alt">公式${j.pattern}：${esc(pat.name)}</span>${sceneLinks(j.scenes)}</div>
 
@@ -186,9 +130,9 @@
       </section>
 
       <nav class="pager">
-        ${idx > 0 ? `<a class="btn ghost" href="#/learn/${JOKES[idx - 1].id}">← 上一個</a>` : '<span></span>'}
-        <a class="btn" href="#/perform/${j.id}">去表演練習 🎤</a>
-        ${idx < JOKES.length - 1 ? `<a class="btn ghost" href="#/learn/${JOKES[idx + 1].id}">下一個 →</a>` : '<span></span>'}
+        ${idx > 0 ? `<a class="btn ghost" href="#/humor/learn/${JOKES[idx - 1].id}">← 上一個</a>` : '<span></span>'}
+        <a class="btn" href="#/humor/perform/${j.id}">去表演練習 🎤</a>
+        ${idx < JOKES.length - 1 ? `<a class="btn ghost" href="#/humor/learn/${JOKES[idx + 1].id}">下一個 →</a>` : '<span></span>'}
       </nav>`;
 
     const gb = $('#guessBtns');
@@ -213,21 +157,6 @@
     } else lb.innerHTML = noSupport('語音朗讀');
   }
 
-  // 一個按鈕：按下後聽寫到指定輸入框
-  function micToField(field) {
-    const b = speakBtn('🎤 用說的', async () => {
-      b.disabled = true;
-      b.textContent = '聆聽中…';
-      try {
-        const { transcript } = await Speech.listen({ onInterim: (t) => (field.value = t) });
-        if (transcript) field.value = transcript;
-      } catch (e) { alert(e.message); }
-      b.disabled = false;
-      b.textContent = '🎤 用說的';
-    });
-    return b;
-  }
-
   // ---------- 猜梗測驗 ----------
   function quiz() {
     const order = shuffle(JOKES);
@@ -240,7 +169,7 @@
           <section class="card center">
             <div class="big">${correct} / ${order.length}</div>
             <p>${correct === order.length ? '全對！你已經抓到「雙關反轉」的感覺了 👏' : '提示：笑點通常不是「最合理」的答案，而是「把某個詞換成另一個意思」的答案。'}</p>
-            <a class="btn primary" href="#/quiz" onclick="location.reload()">再玩一次</a>
+            <a class="btn primary" href="#/humor/quiz" onclick="location.reload()">再玩一次</a>
           </section>`;
         return;
       }
@@ -312,7 +241,7 @@
         <div id="recBody"></div>
       </section>`;
 
-    $('#pickJoke').onchange = (e) => (location.hash = '#/perform/' + e.target.value);
+    $('#pickJoke').onchange = (e) => (location.hash = '#/humor/perform/' + e.target.value);
 
     const demo = $('#demoBtns');
     if (Speech.ttsSupported) demo.append(speakBtn('🔊 聽示範', () => Speech.play(performanceScript(j))), speakBtn('⏹', () => Speech.stop(), 'ghost'));
@@ -592,7 +521,7 @@
         if (Speech.ttsSupported) row.append(speakBtn('🔊', () => Speech.play([{ text: n.text, ...A() }]), 'ghost'));
         row.append(speakBtn('✍️ 改寫成我的', () => {
           sessionStorage.setItem('sfh-prefill', JSON.stringify({ ref: n.text, scene: (n.scenes || [])[0] }));
-          location.hash = '#/create';
+          location.hash = '#/humor/create';
         }, 'ghost'));
         row.append(speakBtn('🗑', () => {
           if (!confirm('刪除這則？')) return;
@@ -631,7 +560,7 @@
       ${Object.entries(groups).map(([g, list]) => `
         <h2 class="section-title">${esc(g)}</h2>
         <div class="scene-grid">
-          ${list.map((sc) => `<a class="scene-card" href="#/scenes/${esc(sc.id)}">
+          ${list.map((sc) => `<a class="scene-card" href="#/humor/scenes/${esc(sc.id)}">
             <span class="emoji">${esc(sc.emoji)}</span><b>${esc(sc.name)}</b>
             <small>${count(sc.id)} 則段子・${(sc.words || []).length} 個素材</small></a>`).join('')}
         </div>`).join('')}
@@ -657,14 +586,14 @@
 
   function sceneDetail(id) {
     const sc = sceneById(id);
-    if (!sc) return (location.hash = '#/scenes');
+    if (!sc) return (location.hash = '#/humor/scenes');
     const jokes = JOKES.filter((j) => j.scenes.includes(id));
     const myJokes = store.get('myjokes', []).filter((m) => (m.scenes || []).includes(id));
     const notes = store.get('notes', []).filter((n) => (n.scenes || []).includes(id));
     const isCustom = id.startsWith('c');
 
     view.innerHTML = `
-      <a class="back" href="#/scenes">← 場景地圖</a>
+      <a class="back" href="#/humor/scenes">← 場景地圖</a>
       <h1>${esc(sc.emoji)} ${esc(sc.name)}</h1>
       ${sc.desc ? `<p class="hint">${esc(sc.desc)}</p>` : ''}
 
@@ -674,7 +603,7 @@
 
       <h2 class="section-title">這個場景的段子</h2>
       <div class="list">
-        ${jokes.map((j) => `<a class="joke-item" href="#/learn/${j.id}"><span class="num">📖</span>
+        ${jokes.map((j) => `<a class="joke-item" href="#/humor/learn/${j.id}"><span class="num">📖</span>
           <span class="body"><b>${esc(j.title)}</b><small>${esc(j.setup)}</small></span></a>`).join('')}
         ${myJokes.map((m) => `<div class="joke-item"><span class="num">✍️</span>
           <span class="body"><b>${esc(m.setup)}</b><small>${esc(m.punchline)}</small></span></div>`).join('')}
@@ -734,7 +663,7 @@
         <div class="row"></div>`;
       el.querySelector('.row').append(speakBtn('✍️ 用這個寫', () => {
         sessionStorage.setItem('sfh-prefill', JSON.stringify({ ...w, scene: id }));
-        location.hash = '#/create';
+        location.hash = '#/humor/create';
       }, 'ghost'));
       words.append(el);
     });
@@ -742,7 +671,7 @@
     if (isCustom) $('#delScene').onclick = () => {
       if (!confirm('刪除這個場景？（段子不會被刪除）')) return;
       store.set('customScenes', store.get('customScenes', []).filter((s) => s.id !== id));
-      location.hash = '#/scenes';
+      location.hash = '#/humor/scenes';
     };
   }
 
@@ -750,7 +679,7 @@
   function theory() {
     const T = THEORY;
     view.innerHTML = `
-      <a class="back" href="#/">← 返回</a>
+      <a class="back" href="#/humor">← 返回</a>
       <h1>幽默原理</h1>
       <section class="card">
         <h2>為什麼人會笑？四大理論</h2>
@@ -767,50 +696,28 @@
       <section class="card">
         <h2>怎麼收集好笑的片段</h2>
         <ul class="steps">${T.collect.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>
-        <a class="btn primary" href="#/collect">打開笑點收集本 →</a>
+        <a class="btn primary" href="#/humor/collect">打開笑點收集本 →</a>
       </section>`;
   }
-
-  // ---------- 設定 ----------
-  function settingsPage() {
-    const opts = (sel) => ['<option value="">（自動）</option>']
-      .concat(Speech.voices.map((v) => `<option value="${esc(v.name)}" ${v.name === sel ? 'selected' : ''}>${esc(v.name)}（${esc(v.lang)}）</option>`)).join('');
-    view.innerHTML = `
-      <h1>設定</h1>
-      <section class="card">
-        <h2>語音</h2>
-        ${Speech.ttsSupported ? '' : noSupport('語音朗讀')}
-        ${Speech.ttsSupported && !Speech.voices.length ? '<div class="notice">找不到中文語音。Windows 請到「設定 → 時間與語言 → 語音」安裝中文（台灣）語音；手機請在系統的文字轉語音設定中下載中文語音。</div>' : ''}
-        <label>主角聲音（你）<select id="sA">${opts(settings.voiceA)}</select></label>
-        <label>搭檔聲音<select id="sB">${opts(settings.voiceB)}</select></label>
-        <label>語速 <output id="oRate">${settings.rate}</output><input type="range" id="sRate" min="0.6" max="1.4" step="0.05" value="${settings.rate}"></label>
-        <label>笑點前停頓 <output id="oPause">${(settings.pause / 1000).toFixed(1)} 秒</output><input type="range" id="sPause" min="0" max="2500" step="100" value="${settings.pause}"></label>
-        <div class="row" id="sTest"></div>
-        <p class="small">語音辨識：${Speech.sttSupported ? '✅ 支援' : '❌ 不支援'}　錄音：${Speech.recSupported ? '✅ 支援' : '❌ 不支援'}</p>
-      </section>
-      <section class="card">
-        <h2>資料</h2>
-        <p class="small">所有進度、作品、收集本都只存在這台裝置的瀏覽器裡。</p>
-        <button class="btn ghost" id="reset">重設學習進度</button>
-      </section>`;
-    const save = () => store.set('settings', settings);
-    $('#sA').onchange = (e) => { settings.voiceA = e.target.value; save(); };
-    $('#sB').onchange = (e) => { settings.voiceB = e.target.value; save(); };
-    $('#sRate').oninput = (e) => { settings.rate = +e.target.value; $('#oRate').textContent = settings.rate; save(); };
-    $('#sPause').oninput = (e) => { settings.pause = +e.target.value; $('#oPause').textContent = (settings.pause / 1000).toFixed(1) + ' 秒'; save(); };
-    if (Speech.ttsSupported) $('#sTest').append(speakBtn('🔊 試聽', () => Speech.play(dialogScript(JOKES[0]))));
-    $('#reset').onclick = () => {
-      if (!confirm('確定要清除學習進度？（作品與收集本會保留）')) return;
-      Object.keys(progress).forEach((k) => delete progress[k]);
-      saveProgress();
-      alert('已重設');
-    };
-  }
-
-  // ---------- 啟動 ----------
-  Speech.init(() => { if (location.hash.startsWith('#/settings')) settingsPage(); });
-  router();
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
+  App.register({
+    id: 'humor',
+    name: '幽默訓練',
+    short: '幽默',
+    emoji: '😄',
+    tagline: '拆解段子、用場景記梗、跟搭檔對練、寫出自己的雙關。',
+    summary: () => {
+      const n = JOKES.filter((j) => progress[j.id] && progress[j.id].learned).length;
+      return `已學會 ${n} / ${JOKES.length} 個段子`;
+    },
+    reset: () => { Object.keys(progress).forEach((k) => delete progress[k]); saveProgress(); },
+    tabs: [
+      { page: '', icon: '📚', label: '學習', match: ['', 'learn', 'theory'] },
+      { page: 'scenes', icon: '🗺️', label: '場景' },
+      { page: 'quiz', icon: '🎯', label: '猜梗' },
+      { page: 'perform', icon: '🎤', label: '表演' },
+      { page: 'create', icon: '✍️', label: '創作' },
+      { page: 'collect', icon: '📒', label: '收集' }
+    ],
+    pages: { '': home, learn, quiz, perform, create, collect, scenes, theory }
+  });
 })();

@@ -1,6 +1,6 @@
 {
-  "name": "幽默訓練器 SunnyForHumor",
-  "short_name": "幽默訓練器",
+  "name": "Sunny 表達訓練",
+  "short_name": "表達訓練",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#fffbf3",

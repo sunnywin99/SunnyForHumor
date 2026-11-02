@@ -78,48 +78,68 @@
       if (synth) synth.cancel();
     },
 
-    // 聽一句話。回傳 { transcript, startDelay }
+    // 聽使用者說話。回傳 { transcript, startDelay }
     //  startDelay：從開始聆聽到偵測到聲音的毫秒數（用來估算接話節奏）
-    listen({ onInterim, maxMs = 12000 } = {}) {
+    //  continuous：計時口說用，說話中停頓也不會結束，直到 maxMs 或手動停止（中途斷線會自動接續）
+    listen({ onInterim, maxMs = 12000, continuous = false } = {}) {
       return new Promise((resolve, reject) => {
         if (!SR) return reject(new Error('此瀏覽器不支援語音辨識'));
-        const rec = new SR();
-        rec.lang = 'zh-TW';
-        rec.interimResults = true;
-        rec.continuous = false;
-        rec.maxAlternatives = 1;
         const t0 = performance.now();
         let startDelay = null;
         let finalText = '';
         let interimText = '';
-        const timer = setTimeout(() => rec.stop(), maxMs);
+        let stopped = false;
+        let rec;
+        const finish = () => {
+          if (stopped) return;
+          stopped = true;
+          clearTimeout(timer);
+          resolve({ transcript: (finalText + interimText).trim(), startDelay });
+        };
+        const timer = setTimeout(() => { Speech._stopReq = true; try { rec.stop(); } catch (_) {} }, maxMs);
+        Speech._stopReq = false;
 
-        rec.onspeechstart = () => { if (startDelay === null) startDelay = performance.now() - t0; };
-        rec.onresult = (e) => {
-          interimText = '';
-          for (let i = e.resultIndex; i < e.results.length; i++) {
-            const r = e.results[i];
-            if (r.isFinal) finalText += r[0].transcript;
-            else interimText += r[0].transcript;
-          }
-          if (startDelay === null) startDelay = performance.now() - t0;
-          onInterim && onInterim(finalText + interimText);
+        const begin = () => {
+          rec = new SR();
+          rec.lang = 'zh-TW';
+          rec.interimResults = true;
+          rec.continuous = continuous;
+          rec.maxAlternatives = 1;
+          rec.onspeechstart = () => { if (startDelay === null) startDelay = performance.now() - t0; };
+          rec.onresult = (e) => {
+            interimText = '';
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+              const r = e.results[i];
+              if (r.isFinal) finalText += r[0].transcript + (continuous ? '，' : '');
+              else interimText += r[0].transcript;
+            }
+            if (startDelay === null) startDelay = performance.now() - t0;
+            onInterim && onInterim(finalText + interimText);
+          };
+          rec.onerror = (e) => {
+            if (e.error === 'no-speech' || e.error === 'aborted') return; // 交給 onend 處理
+            stopped = true;
+            clearTimeout(timer);
+            reject(new Error(errorText(e.error)));
+          };
+          rec.onend = () => {
+            if (stopped) return;
+            const timeLeft = performance.now() - t0 < maxMs - 500;
+            if (continuous && timeLeft && !Speech._stopReq) {
+              finalText += interimText; interimText = '';
+              try { return begin(); } catch (_) {}
+            }
+            finish();
+          };
+          Speech._rec = rec;
+          rec.start();
         };
-        rec.onerror = (e) => {
-          clearTimeout(timer);
-          if (e.error === 'no-speech') resolve({ transcript: '', startDelay: null });
-          else reject(new Error(errorText(e.error)));
-        };
-        rec.onend = () => {
-          clearTimeout(timer);
-          resolve({ transcript: finalText || interimText, startDelay });
-        };
-        Speech._rec = rec;
-        rec.start();
+        begin();
       });
     },
 
     stopListening() {
+      Speech._stopReq = true;
       if (Speech._rec) try { Speech._rec.stop(); } catch (_) {}
     },
 
