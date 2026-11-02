@@ -27,7 +27,9 @@
           if (l.startsWith('zh')) return 1;
           return 9;
         };
-        this.voices = all.filter((v) => rank(v) < 9).sort((a, b) => rank(a) - rank(b));
+        // 同語言中，線上神經語音（Edge 的 Natural、Google 的線上聲音）排前面，聲音比較自然
+        const natural = (v) => (/natural|online|neural/i.test(v.name) ? 0 : 1);
+        this.voices = all.filter((v) => rank(v) < 9).sort((a, b) => rank(a) - rank(b) || natural(a) - natural(b));
         onReady && onReady(this.voices);
       };
       load();

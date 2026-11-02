@@ -384,53 +384,41 @@
   }
 
   // ---------- 跟讀 ----------
+  // 用朗讀器播放：可每句連續三遍、跟著畫線；每句旁邊有 🎤 跟讀評分
   function shadow() {
     const custom = store.get('speak-shadow-custom', '');
     const passages = window.SHADOW_PASSAGES.concat(custom ? [{ title: '我貼上的稿子', text: custom }] : []);
+    const sel = Math.min(store.get('speak-shadow-sel', 0), passages.length - 1);
     view.innerHTML = `
       <a class="back" href="#/speak">← 說話訓練</a>
       <h1>跟讀練習</h1>
-      <p class="hint">重點模仿怎麼<b>停頓</b>（｜）、怎麼<b>加重</b>（粗體）。一句一句跟，再整段跟。</p>
-      <div class="select-row"><select id="pSel">${passages.map((p, i) => `<option value="${i}">${esc(p.title)}</option>`).join('')}</select></div>
-      <section class="card"><div id="pText" class="passage"></div><div class="row" id="pBtns"></div></section>
-      <div id="pSentences"></div>
+      <p class="hint">重點模仿怎麼<b>停頓</b>（｜）、怎麼<b>加重</b>（粗體）。建議選「每句連續三遍」：聽三遍，再按 🎤 跟讀。</p>
+      <div class="select-row"><select id="pSel">${passages.map((p, i) => `<option value="${i}" ${i === sel ? 'selected' : ''}>${esc(p.title)}</option>`).join('')}</select></div>
+      <div id="pBar"></div>
+      <div id="pSentences" class="doc-body"></div>
       <section class="card">
         <h2>貼上自己的稿子</h2>
-        <p class="small">可以貼訪問、演講的逐字稿。用「｜」標停頓、用【】標要加重的字。</p>
+        <p class="small">可以貼訪問、演講的逐字稿。用「｜」標停頓、用【】標要加重的字（朗讀時記號不會念出來）。更長的文章可以放到 🔊 朗讀室。</p>
         <textarea id="pCustom" rows="4" placeholder="例：我覺得｜【堅持】比天分重要。">${esc(custom)}</textarea>
         <button class="btn" id="pSave">儲存</button>
       </section>`;
+    $('#pBar').append(Reader.playerBar());
 
     const render = () => {
+      Reader.stop();
       const p = passages[$('#pSel').value];
-      const html = esc(p.text).replace(/【(.+?)】/g, '<strong>$1</strong>').replace(/｜/g, '<span class="pause">｜</span>');
-      $('#pText').innerHTML = html;
-      const sentences = p.text.split(/(?<=[。！？!?])/).map((s) => s.trim()).filter(Boolean);
-      const segs = (s) => s.split('｜').filter((x) => x.trim()).map((x) => ({ text: x.replace(/[【】]/g, ''), ...A(), rate: settings.rate * (/【/.test(x) ? 0.85 : 1) }));
-      const withPauses = (s) => segs(s).flatMap((x, i) => (i ? [{ pause: 350 }] : []).concat([x]));
-
-      const btns = $('#pBtns');
-      btns.innerHTML = '';
-      if (Speech.ttsSupported) {
-        btns.append(
-          speakBtn('🔊 整段示範', () => Speech.play(sentences.flatMap((s) => withPauses(s).concat([{ pause: 600 }])))),
-          speakBtn('⏹', () => Speech.stop(), 'ghost')
-        );
-      } else btns.innerHTML = noSupport('語音朗讀');
-
+      const sentences = p.text.split(/(?<=[。！？!?])/).map((x) => x.replace(/^[\s｜]+/, '').trim()).filter(Boolean);
       const list = $('#pSentences');
       list.innerHTML = '';
-      sentences.forEach((s) => {
-        const plain = s.replace(/[｜【】]/g, '');
-        const el = document.createElement('div');
-        el.className = 'card sentence';
-        el.innerHTML = `<p>${esc(s).replace(/【(.+?)】/g, '<strong>$1</strong>').replace(/｜/g, '<span class="pause">｜</span>')}</p><div class="row"></div><div class="out small"></div>`;
-        const row = el.querySelector('.row');
-        if (Speech.ttsSupported) row.append(speakBtn('🔊', () => Speech.play(withPauses(s)), 'ghost'));
+      sentences.forEach((sText) => {
+        const plain = sText.replace(/[｜【】]/g, '');
+        const blk = Reader.block(sText, { html: Reader.markHtml });
+        const out = document.createElement('div');
+        out.className = 'out small';
         if (Speech.sttSupported) {
           const mic = speakBtn('🎤 跟讀', async () => {
+            Reader.stop();
             mic.disabled = true;
-            const out = el.querySelector('.out');
             out.textContent = '聆聽中…';
             try {
               const r = await Speech.listen({ onInterim: (t) => (out.textContent = t) });
@@ -438,13 +426,14 @@
               out.innerHTML = `<b>${Math.round(sc.sim * 100)}%</b> 相似　「${esc(r.transcript || '（沒聽到）')}」`;
             } catch (e) { out.textContent = e.message; }
             mic.disabled = false;
-          });
-          row.append(mic);
+          }, 'ghost small-btn');
+          blk.querySelector('.controls').append(mic);
         }
-        list.append(el);
+        blk.append(out);
+        list.append(blk);
       });
     };
-    $('#pSel').onchange = render;
+    $('#pSel').onchange = () => { store.set('speak-shadow-sel', +$('#pSel').value); render(); };
     $('#pSave').onclick = () => { store.set('speak-shadow-custom', $('#pCustom').value.trim()); shadow(); };
     render();
   }

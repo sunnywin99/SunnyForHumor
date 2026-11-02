@@ -14,7 +14,7 @@
       try { localStorage.setItem('sfh-' + key, JSON.stringify(val)); } catch (_) {}
     }
   };
-  const settings = Object.assign({ rate: 1, pause: 1000, voiceA: '', voiceB: '' }, store.get('settings', {}));
+  const settings = Object.assign({ rate: 1, pause: 1000, voiceA: '', voiceB: '', playMode: 'continuous', repeat: '1' }, store.get('settings', {}));
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const shuffle = (arr) => arr.map((v) => [Math.random(), v]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
@@ -70,6 +70,7 @@
   function router() {
     Speech.stop();
     Speech.stopListening();
+    if (window.Reader) Reader.stop();
     const [mod = '', page = '', arg] = location.hash.replace(/^#\/?/, '').split('/');
     if (LEGACY.includes(mod)) return location.replace('#/humor/' + [mod, page].filter(Boolean).join('/'));
     const m = modules[mod];
@@ -130,9 +131,12 @@
         ${Speech.ttsSupported && !Speech.voices.length ? '<div class="notice">找不到中文語音。Windows 請到「設定 → 時間與語言 → 語音」安裝中文（台灣）語音；手機請在系統的文字轉語音設定中下載中文語音。</div>' : ''}
         <label>主要聲音（示範、你）<select id="sA">${opts(settings.voiceA)}</select></label>
         <label>對話聲音（搭檔、對方）<select id="sB">${opts(settings.voiceB)}</select></label>
-        <label>語速 <output id="oRate">${settings.rate}</output><input type="range" id="sRate" min="0.6" max="1.4" step="0.05" value="${settings.rate}"></label>
+        <label>語速 <output id="oRate">${settings.rate}</output><input type="range" id="sRate" min="0.5" max="2" step="0.05" value="${settings.rate}"></label>
         <label>笑點前停頓（幽默單元） <output id="oPause">${(settings.pause / 1000).toFixed(1)} 秒</output><input type="range" id="sPause" min="0" max="2500" step="100" value="${settings.pause}"></label>
+        <label>朗讀播放方式<select id="sMode"><option value="single">單一播放（念完這段就停）</option><option value="continuous">連續播放（自動念下一段）</option></select></label>
+        <label>每句次數<select id="sRepeat"><option value="1">每句一遍</option><option value="3">每句連續三遍（跟讀用）</option></select></label>
         <div class="row" id="sTest"></div>
+        <p class="small">💡 想要更自然的聲音：用 <b>Microsoft Edge</b> 瀏覽器打開，聲音清單會出現「HsiaoChen／YunJhe Online (Natural)」等台灣神經語音（和 wordstovoice 用的同一組）。</p>
         <p class="small">語音辨識：${Speech.sttSupported ? '✅ 支援' : '❌ 不支援'}　錄音：${Speech.recSupported ? '✅ 支援' : '❌ 不支援'}</p>
       </section>
       <section class="card">
@@ -144,6 +148,10 @@
     $('#sA').onchange = (e) => { settings.voiceA = e.target.value; save(); };
     $('#sB').onchange = (e) => { settings.voiceB = e.target.value; save(); };
     $('#sRate').oninput = (e) => { settings.rate = +e.target.value; $('#oRate').textContent = settings.rate; save(); };
+    $('#sMode').value = settings.playMode;
+    $('#sRepeat').value = String(settings.repeat);
+    $('#sMode').onchange = (e) => { settings.playMode = e.target.value; save(); };
+    $('#sRepeat').onchange = (e) => { settings.repeat = e.target.value; save(); };
     $('#sPause').oninput = (e) => { settings.pause = +e.target.value; $('#oPause').textContent = (settings.pause / 1000).toFixed(1) + ' 秒'; save(); };
     if (Speech.ttsSupported) {
       $('#sTest').append(speakBtn('🔊 試聽', () => Speech.play([{ text: '你好，我是主要聲音。', ...A() }, { pause: 300 }, { text: '我是對話聲音。', ...B() }])));
