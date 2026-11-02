@@ -174,3 +174,17 @@ summary { cursor: pointer; font-weight: 600; }
 .types span { color: var(--muted); font-size: .92rem; }
 
 .notice { background: var(--b); color: var(--b-ink); border-radius: 10px; padding: 10px 12px; font-size: .9rem; margin: 10px 0; }
+
+/* 場景 */
+.chip.scene { background: var(--bg); color: var(--text); border: 1px solid var(--line); text-decoration: none; }
+.chip-btn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.scene-entry { display: flex; flex-direction: column; text-decoration: none; }
+.scene-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.scene-card {
+  display: flex; flex-direction: column; gap: 2px; text-decoration: none;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px;
+}
+.scene-card .emoji { font-size: 1.8rem; line-height: 1.2; }
+.drill .line.partner { color: var(--text); font-size: 1.05rem; }
+.word-card .split { margin: 8px 0 4px; }
+.tabbar a { font-size: .7rem; }

@@ -1,5 +1,5 @@
 // 離線快取：安裝到手機主畫面後，沒網路也能練習（語音辨識除外，它需要網路）
-const CACHE = 'sfh-v1';
+const CACHE = 'sfh-v2';
 const FILES = ['./', 'index.html', 'css/style.css', 'js/data.js', 'js/theory.js', 'js/speech.js', 'js/app.js', 'icon.svg', 'manifest.webmanifest'];
 self.addEventListener('install', (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES))));
 self.addEventListener('activate', (e) =>
