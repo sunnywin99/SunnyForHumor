@@ -1,0 +1,10 @@
+{
+  "name": "幽默訓練器 SunnyForHumor",
+  "short_name": "幽默訓練器",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fffbf3",
+  "theme_color": "#f59e0b",
+  "lang": "zh-Hant-TW",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
